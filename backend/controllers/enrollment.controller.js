@@ -1,4 +1,4 @@
-const { prisma } = require('../server');
+const prisma = require('../lib/prisma');
 const { sendEmail } = require('../utils/email');
 
 exports.enrollCourse = async (req, res) => {
@@ -58,7 +58,8 @@ exports.enrollCourse = async (req, res) => {
       data: {
         name: user.name,
         courseName: course.title,
-        instructor: course.instructor
+        instructor: course.instructor,
+        courseId: courseId
       }
     });
 

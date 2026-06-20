@@ -1,5 +1,4 @@
-const { prisma } = require('../server');
-const bcrypt = require('bcryptjs');
+const prisma = require('../lib/prisma');
 const fs = require('fs').promises;
 
 exports.getAllUsers = async (req, res) => {

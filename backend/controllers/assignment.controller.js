@@ -1,6 +1,5 @@
-const { prisma } = require('../server');
+const prisma = require('../lib/prisma');
 const fs = require('fs').promises;
-const path = require('path');
 const { sendEmail } = require('../utils/email');
 
 exports.uploadAssignment = async (req, res) => {
@@ -104,8 +103,12 @@ exports.getCourseAssignments = async (req, res) => {
       where: { id: courseId }
     });
 
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
+
     // If student, only show their assignments
-    if (course && course.instructor !== (await prisma.user.findUnique({ where: { id: userId } })).name) {
+    if (course && course.instructor !== user.name) {
       const filtered = assignments.filter(a => a.userId === userId);
       return res.json(filtered);
     }

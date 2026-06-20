@@ -1,4 +1,5 @@
-const { prisma, redis } = require('../server');
+const prisma = require('../lib/prisma');
+const redis = require('../lib/redis');
 
 exports.getCourses = async (req, res) => {
   try {
@@ -125,11 +126,10 @@ exports.createCourse = async (req, res) => {
     });
 
     // Clear cache
-    await redis.keys('courses:*').then(keys => {
-      if (keys.length > 0) {
-        redis.del(keys);
-      }
-    });
+    const keys = await redis.keys('courses:*');
+    if (keys.length > 0) {
+      await redis.del(keys);
+    }
 
     res.status(201).json(course);
   } catch (error) {
@@ -163,11 +163,10 @@ exports.updateCourse = async (req, res) => {
     });
 
     // Clear cache
-    await redis.keys('courses:*').then(keys => {
-      if (keys.length > 0) {
-        redis.del(keys);
-      }
-    });
+    const keys = await redis.keys('courses:*');
+    if (keys.length > 0) {
+      await redis.del(keys);
+    }
 
     res.json(course);
   } catch (error) {
@@ -187,11 +186,10 @@ exports.deleteCourse = async (req, res) => {
     });
 
     // Clear cache
-    await redis.keys('courses:*').then(keys => {
-      if (keys.length > 0) {
-        redis.del(keys);
-      }
-    });
+    const keys = await redis.keys('courses:*');
+    if (keys.length > 0) {
+      await redis.del(keys);
+    }
 
     res.json({ message: 'Course deleted successfully', course });
   } catch (error) {
@@ -210,11 +208,10 @@ exports.recoverCourse = async (req, res) => {
     });
 
     // Clear cache
-    await redis.keys('courses:*').then(keys => {
-      if (keys.length > 0) {
-        redis.del(keys);
-      }
-    });
+    const keys = await redis.keys('courses:*');
+    if (keys.length > 0) {
+      await redis.del(keys);
+    }
 
     res.json({ message: 'Course recovered successfully', course });
   } catch (error) {
