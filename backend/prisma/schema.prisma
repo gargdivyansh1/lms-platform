@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String         @id @default(uuid())
+  email           String         @unique
+  password        String
+  name            String
+  role            Role           @default(STUDENT)
+  avatar          String?
+  enrolledCourses UserCourse[]
+  assignments     Assignment[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([email])
+}
+
+model Course {
+  id          String         @id @default(uuid())
+  title       String
+  description String         @db.Text
+  instructor  String
+  thumbnail   String?
+  enrolled    UserCourse[]
+  modules     Module[]
+  assignments Assignment[]
+  isDeleted   Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([isDeleted])
+  @@index([instructor])
+}
+
+model UserCourse {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress    Int      @default(0)
+  completed   Boolean  @default(false)
+  enrolledAt  DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+model Module {
+  id          String   @id @default(uuid())
+  title       String
+  content     String   @db.Text
+  videoUrl    String?
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  order       Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([order])
+}
+
+model Assignment {
+  id          String   @id @default(uuid())
+  title       String
+  description String   @db.Text
+  fileUrl     String
+  fileSize    Int
+  mimeType    String
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grade       Float?
+  feedback    String?
+  submittedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([courseId])
+  @@index([userId])
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      String   // 'enrollment', 'grade', 'assignment'
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+enum Role {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+}
