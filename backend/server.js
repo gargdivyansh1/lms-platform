@@ -6,16 +6,16 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const path = require('path');
-const { PrismaClient } = require('@prisma/client');
-const Redis = require('ioredis');
+
+// Import clients
+const prisma = require('./lib/prisma');
+const redis = require('./lib/redis');
 
 // Load environment variables
 dotenv.config();
 
 // Initialize
 const app = express();
-const prisma = new PrismaClient();
-const redis = new Redis(process.env.REDIS_URL);
 
 // Rate limiting
 const limiter = rateLimit({
@@ -49,12 +49,16 @@ const courseRoutes = require('./routes/course.routes');
 const assignmentRoutes = require('./routes/assignment.routes');
 const enrollmentRoutes = require('./routes/enrollment.routes');
 const userRoutes = require('./routes/user.routes');
+const adminRoutes = require('./routes/admin.routes')
+const instructorRoutes = require('./routes/instructor.routes')
 
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/instructor', instructorRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -77,8 +81,8 @@ app.use((req, res) => {
 // Start server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📚 Environment: ${process.env.NODE_ENV}`);
 });
 
 // Graceful shutdown
@@ -89,4 +93,5 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
+// Export for testing
 module.exports = { app, prisma, redis };
