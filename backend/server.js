@@ -19,8 +19,8 @@ const app = express();
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: 'Too many requests from this IP, please try again later.'
 });
 
@@ -39,6 +39,8 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Also serve from /api/uploads for backward compatibility
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Apply rate limiting to all routes
 app.use('/api', limiter);
@@ -49,8 +51,10 @@ const courseRoutes = require('./routes/course.routes');
 const assignmentRoutes = require('./routes/assignment.routes');
 const enrollmentRoutes = require('./routes/enrollment.routes');
 const userRoutes = require('./routes/user.routes');
-const adminRoutes = require('./routes/admin.routes')
-const instructorRoutes = require('./routes/instructor.routes')
+const adminRoutes = require('./routes/admin.routes');
+const instructorRoutes = require('./routes/instructor.routes');
+const studentRoutes = require('./routes/student.routes'); 
+const wishlistRoutes = require('./routes/wishlist.routes')
 
 app.use('/api/auth', authRoutes);
 app.use('/api/courses', courseRoutes);
@@ -59,6 +63,8 @@ app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/instructor', instructorRoutes);
+app.use('/api/student', studentRoutes);
+app.use('/api/wishlist', wishlistRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
@@ -93,5 +99,4 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-// Export for testing
 module.exports = { app, prisma, redis };

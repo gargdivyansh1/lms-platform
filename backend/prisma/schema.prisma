@@ -14,12 +14,19 @@ model User {
   name            String
   role            Role           @default(STUDENT)
   avatar          String?
+  bio             String?        // Add bio field
+  isDeleted       Boolean        @default(false)
   enrolledCourses UserCourse[]
   assignments     Assignment[]
+  certificates    Certificate[]  // Add this relation
+  wishlist        Wishlist[]     // Add this relation
+  reviews         Review[]       // Add this relation
+  notifications   Notification[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
   @@index([email])
+  @@index([role])
 }
 
 model Course {
@@ -28,15 +35,22 @@ model Course {
   description String         @db.Text
   instructor  String
   thumbnail   String?
+  category    String?        // Add category field
+  featured    Boolean        @default(false)
+  isDeleted   Boolean        @default(false)
   enrolled    UserCourse[]
   modules     Module[]
   assignments Assignment[]
-  isDeleted   Boolean        @default(false)
+  certificates Certificate[]  // Add this relation
+  wishlist    Wishlist[]     // Add this relation
+  reviews     Review[]       // Add this relation
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
   @@index([isDeleted])
   @@index([instructor])
+  @@index([featured])
+  @@index([category])
 }
 
 model UserCourse {
@@ -73,20 +87,63 @@ model Assignment {
   id          String   @id @default(uuid())
   title       String
   description String   @db.Text
-  fileUrl     String
-  fileSize    Int
-  mimeType    String
+  fileUrl     String?
+  fileSize    Int      @default(0)
+  mimeType    String   @default("")
   courseId    String
   course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   grade       Float?
   feedback    String?
-  submittedAt DateTime @default(now())
+  submittedAt DateTime? // Make this optional (nullable)
   updatedAt   DateTime @updatedAt
 
   @@index([courseId])
   @@index([userId])
+  @@index([submittedAt])
+}
+
+model Certificate {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  fileUrl   String
+  issuedAt  DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+model Wishlist {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([courseId])
 }
 
 model Notification {
@@ -94,12 +151,13 @@ model Notification {
   userId    String
   title     String
   message   String
-  type      String   // 'enrollment', 'grade', 'assignment'
+  type      String   // 'enrollment', 'grade', 'assignment', 'announcement', 'system'
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([isRead])
+  users User[]
 }
 
 enum Role {
