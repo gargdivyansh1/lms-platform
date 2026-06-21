@@ -3,7 +3,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const ProtectedRoute = ({ requiredRole }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, isAuthenticated } = useAuth();
 
   if (loading) {
     return (
@@ -13,12 +13,16 @@ const ProtectedRoute = ({ requiredRole }) => {
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace state={{ from: window.location.pathname }} />;
   }
 
-  if (requiredRole && user.role !== requiredRole && user.role !== 'ADMIN') {
-    return <Navigate to="/" replace />;
+  // Check for required role
+  if (requiredRole) {
+    const hasRole = user?.role === requiredRole || user?.role === 'ADMIN';
+    if (!hasRole) {
+      return <Navigate to="/" replace />;
+    }
   }
 
   return <Outlet />;
