@@ -28,10 +28,21 @@ export const AuthProvider = ({ children }) => {
   const fetchUser = async () => {
     try {
       const response = await api.get('/auth/me');
+      // Ensure avatar path is correct
+      if (response.data.avatar) {
+        // If avatar doesn't start with /uploads, add it
+        if (!response.data.avatar.startsWith('/uploads')) {
+          response.data.avatar = `/uploads${response.data.avatar}`;
+        }
+      }
       setUser(response.data);
     } catch (error) {
       console.error('Fetch user error:', error);
-      logout();
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        setToken(null);
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -46,8 +57,8 @@ export const AuthProvider = ({ children }) => {
       setToken(token);
       setUser(user);
       
-      toast.success('Login successful!');
-      return { success: true };
+      toast.success(`Welcome back, ${user.name}!`);
+      return { success: true, user };
     } catch (error) {
       toast.error(error.response?.data?.error || 'Login failed');
       return { success: false, error: error.response?.data?.error };
@@ -63,8 +74,8 @@ export const AuthProvider = ({ children }) => {
       setToken(token);
       setUser(user);
       
-      toast.success('Registration successful!');
-      return { success: true };
+      toast.success('Registration successful! Welcome to LMS!');
+      return { success: true, user };
     } catch (error) {
       toast.error(error.response?.data?.error || 'Registration failed');
       return { success: false, error: error.response?.data?.error };
