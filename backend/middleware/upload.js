@@ -1,3 +1,4 @@
+// backend/middleware/upload.js
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
@@ -10,9 +11,15 @@ const createDir = (dir) => {
   }
 };
 
-createDir('uploads/assignments');
-createDir('uploads/avatars');
-createDir('uploads/thumbnails');
+// Create all necessary directories
+const uploadDirs = [
+  'uploads/assignments',
+  'uploads/avatars',
+  'uploads/thumbnails',
+  'uploads/certificates'
+];
+
+uploadDirs.forEach(dir => createDir(dir));
 
 // Assignment storage
 const assignmentStorage = multer.diskStorage({
@@ -22,7 +29,7 @@ const assignmentStorage = multer.diskStorage({
   filename: (req, file, cb) => {
     const uniqueId = crypto.randomBytes(16).toString('hex');
     const ext = path.extname(file.originalname);
-    cb(null, `${uniqueId}-${Date.now()}${ext}`);
+    cb(null, `assignment-${uniqueId}-${Date.now()}${ext}`);
   }
 });
 
@@ -33,19 +40,17 @@ const avatarStorage = multer.diskStorage({
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname);
-    cb(null, `avatar-${req.userId}-${Date.now()}${ext}`);
+    const userId = req.userId || req.body.userId || 'unknown';
+    cb(null, `avatar-${userId}-${Date.now()}${ext}`);
   }
 });
 
-// File filter
-const fileFilter = (req, file, cb) => {
+// File filter for assignments
+const assignmentFileFilter = (req, file, cb) => {
   const allowedTypes = [
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'image/jpeg',
-    'image/png',
-    'image/gif',
     'application/zip',
     'application/x-zip-compressed'
   ];
@@ -53,35 +58,56 @@ const fileFilter = (req, file, cb) => {
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file type. Allowed: PDF, DOC, DOCX, images, ZIP'), false);
+    cb(new Error('Invalid file type. Allowed: PDF, DOC, DOCX, ZIP'), false);
   }
 };
 
-// Assignment upload
+// File filter for images (avatars, thumbnails)
+const imageFileFilter = (req, file, cb) => {
+  const allowedTypes = [
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'image/svg+xml'
+  ];
+
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed. Allowed: JPEG, PNG, GIF, WEBP, SVG'), false);
+  }
+};
+
+// Assignment upload middleware
 const uploadAssignment = multer({
   storage: assignmentStorage,
   limits: {
-    fileSize: process.env.MAX_FILE_SIZE || 209715200 // 200MB
+    fileSize: 200 * 1024 * 1024 // 200MB
   },
-  fileFilter: fileFilter
+  fileFilter: assignmentFileFilter
 });
 
-// Avatar upload
+// Avatar upload middleware
 const uploadAvatar = multer({
   storage: avatarStorage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB
   },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only images are allowed'), false);
-    }
-  }
+  fileFilter: imageFileFilter
 });
 
+// Export middleware functions
 module.exports = {
+  // For assignments
   single: uploadAssignment.single.bind(uploadAssignment),
-  avatar: uploadAvatar.single.bind(uploadAvatar)
+  array: uploadAssignment.array.bind(uploadAssignment),
+  fields: uploadAssignment.fields.bind(uploadAssignment),
+  
+  // For avatars
+  avatar: uploadAvatar.single.bind(uploadAvatar),
+  
+  // Direct access to multer instances if needed
+  assignmentUpload: uploadAssignment,
+  avatarUpload: uploadAvatar
 };

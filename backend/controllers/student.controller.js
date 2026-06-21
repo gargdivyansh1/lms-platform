@@ -494,20 +494,7 @@ exports.generateCertificate = async (req, res) => {
     const { id: courseId } = req.params;
     const userId = req.userId;
 
-    const certificate = await generateCertificate(userId, courseId);
-    res.json({
-      message: 'Certificate generated successfully',
-      certificate
-    });
-  } catch (error) {
-    console.error('Generate certificate error:', error);
-    res.status(500).json({ error: 'Failed to generate certificate' });
-  }
-};
-
-// Helper function to generate PDF certificate
-async function generateCertificate(userId, courseId) {
-  try {
+    // Verify course completion
     const enrollment = await prisma.userCourse.findUnique({
       where: {
         userId_courseId: {
@@ -521,161 +508,57 @@ async function generateCertificate(userId, courseId) {
       }
     });
 
-    if (!enrollment || !enrollment.completed) {
-      throw new Error('Course not completed');
+    if (!enrollment) {
+      return res.status(404).json({ error: 'Enrollment not found' });
+    }
+
+    if (!enrollment.completed) {
+      return res.status(400).json({ error: 'Course not completed yet' });
     }
 
     // Check if certificate already exists
-    const existing = await prisma.certificate?.findFirst({
+    const existingCertificate = await prisma.certificate.findFirst({
       where: {
         userId: userId,
         courseId: courseId
       }
     });
 
-    if (existing) {
-      return existing;
+    if (existingCertificate) {
+      return res.json({
+        message: 'Certificate already exists',
+        certificate: existingCertificate,
+        downloadUrl: `${process.env.API_URL || 'http://localhost:5000'}${existingCertificate.fileUrl}`
+      });
     }
 
-    // Create certificates directory if it doesn't exist
+    // Create certificates directory
     const certificateDir = path.join(__dirname, '../uploads/certificates');
     if (!fs.existsSync(certificateDir)) {
       fs.mkdirSync(certificateDir, { recursive: true });
     }
 
-    // Generate PDF certificate
+    // Generate certificate PDF
     const filename = `certificate-${userId.substring(0, 8)}-${courseId.substring(0, 8)}-${Date.now()}.pdf`;
     const filepath = path.join(certificateDir, filename);
 
-    // Create PDF document
-    const doc = new PDFDocument({
-      size: 'A4',
-      layout: 'landscape',
-      margin: 50
-    });
-
-    // Pipe to file
-    const writeStream = fs.createWriteStream(filepath);
-    doc.pipe(writeStream);
-
-    // Add border
-    doc.rect(30, 30, 750, 520).stroke('#2563eb');
-
-    // Add decorative lines
-    doc.lineWidth(2)
-       .strokeColor('#2563eb')
-       .moveTo(50, 50)
-       .lineTo(760, 50)
-       .stroke();
-
-    // Certificate title
-    doc.fontSize(40)
-       .font('Helvetica-Bold')
-       .fillColor('#1e40af')
-       .text('CERTIFICATE OF COMPLETION', 0, 80, { 
-         align: 'center',
-         width: 750
-       });
-
-    // Decorative line under title
-    doc.lineWidth(1)
-       .strokeColor('#93c5fd')
-       .moveTo(200, 130)
-       .lineTo(600, 130)
-       .stroke();
-
-    // Awarded to text
-    doc.fontSize(18)
-       .font('Helvetica')
-       .fillColor('#374151')
-       .text('This certifies that', 0, 170, { 
-         align: 'center',
-         width: 750
-       });
-
-    // Student name
-    doc.fontSize(36)
-       .font('Helvetica-Bold')
-       .fillColor('#1f2937')
-       .text(enrollment.user.name, 0, 210, { 
-         align: 'center',
-         width: 750
-       });
-
-    // Course text
-    doc.fontSize(18)
-       .font('Helvetica')
-       .fillColor('#374151')
-       .text('has successfully completed the course', 0, 280, { 
-         align: 'center',
-         width: 750
-       });
-
-    // Course name
-    doc.fontSize(28)
-       .font('Helvetica-Bold')
-       .fillColor('#1e40af')
-       .text(enrollment.course.title, 0, 320, { 
-         align: 'center',
-         width: 750
-       });
-
-    // Instructor
-    doc.fontSize(16)
-       .font('Helvetica')
-       .fillColor('#4b5563')
-       .text(`Instructed by: ${enrollment.course.instructor}`, 0, 390, { 
-         align: 'center',
-         width: 750
-       });
-
-    // Date
-    doc.fontSize(14)
-       .font('Helvetica')
-       .fillColor('#6b7280')
-       .text(`Date: ${new Date().toLocaleDateString('en-US', { 
-         year: 'numeric', 
-         month: 'long', 
-         day: 'numeric' 
-       })}`, 0, 440, { 
-         align: 'center',
-         width: 750
-       });
-
-    // Certificate ID
-    doc.fontSize(10)
-       .font('Helvetica')
-       .fillColor('#9ca3af')
-       .text(`Certificate ID: ${userId.substring(0, 8)}-${courseId.substring(0, 8)}`, 0, 500, { 
-         align: 'center',
-         width: 750
-       });
-
-    // Footer
-    doc.fontSize(10)
-       .font('Helvetica')
-       .fillColor('#9ca3af')
-       .text('© 2024 LearnHub - All Rights Reserved', 0, 530, { 
-         align: 'center',
-         width: 750
-       });
-
-    // End the document
-    doc.end();
-
-    // Wait for the file to be written
-    await new Promise((resolve, reject) => {
-      writeStream.on('finish', resolve);
-      writeStream.on('error', reject);
-    });
+    await generateCertificatePDF(enrollment, filepath);
 
     // Save certificate record
-    const certificate = await prisma.certificate?.create({
+    const certificate = await prisma.certificate.create({
       data: {
         userId: userId,
         courseId: courseId,
         fileUrl: `/uploads/certificates/${filename}`,
         issuedAt: new Date()
+      },
+      include: {
+        course: {
+          select: {
+            title: true,
+            instructor: true
+          }
+        }
       }
     });
 
@@ -683,19 +566,240 @@ async function generateCertificate(userId, courseId) {
     await sendEmail({
       to: enrollment.user.email,
       subject: `Certificate of Completion: ${enrollment.course.title}`,
-      template: 'certificate-issued',
+      template: 'certificate-generated',
       data: {
         name: enrollment.user.name,
         courseName: enrollment.course.title,
-        certificateUrl: `${process.env.CLIENT_URL}/certificates/${certificate.id}`
+        downloadUrl: `${process.env.API_URL || 'http://localhost:5000'}${certificate.fileUrl}`
       }
     });
 
-    return certificate;
+    res.status(201).json({
+      message: 'Certificate generated successfully',
+      certificate,
+      downloadUrl: `${process.env.API_URL || 'http://localhost:5000'}${certificate.fileUrl}`
+    });
+
   } catch (error) {
-    console.error('Generate certificate helper error:', error);
-    throw error;
+    console.error('Certificate generation error:', error);
+    res.status(500).json({ error: 'Failed to generate certificate' });
   }
+};
+
+async function generateCertificatePDF(enrollment, filepath) {
+  return new Promise((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({
+        size: 'A4',
+        layout: 'landscape',
+        margin: 0,
+        info: {
+          Title: `Certificate of Completion - ${enrollment.course.title}`,
+          Author: enrollment.course.instructor,
+          Subject: 'Course Completion Certificate'
+        }
+      });
+
+      const writeStream = fs.createWriteStream(filepath);
+      doc.pipe(writeStream);
+
+      // Certificate dimensions
+      const width = doc.page.width;
+      const height = doc.page.height;
+
+      // Background gradient (using border and shapes)
+      const margin = 40;
+
+      // Outer border
+      doc.rect(margin, margin, width - (margin * 2), height - (margin * 2))
+         .strokeColor('#1e293b')
+         .lineWidth(3)
+         .stroke();
+
+      // Inner border
+      doc.rect(margin + 10, margin + 10, width - (margin * 2) - 20, height - (margin * 2) - 20)
+         .strokeColor('#3b82f6')
+         .lineWidth(1.5)
+         .stroke();
+
+      // Decorative top bar
+      doc.rect(margin + 15, margin + 15, width - (margin * 2) - 30, 8)
+         .fillColor('#3b82f6');
+
+      // Decorative bottom bar
+      doc.rect(margin + 15, height - margin - 23, width - (margin * 2) - 30, 8)
+         .fillColor('#3b82f6');
+
+      // Decorative corner accents
+      const cornerSize = 20;
+      const corners = [
+        [margin + 15, margin + 15],
+        [width - margin - 15 - cornerSize, margin + 15],
+        [margin + 15, height - margin - 15 - cornerSize],
+        [width - margin - 15 - cornerSize, height - margin - 15 - cornerSize]
+      ];
+
+      corners.forEach(([x, y]) => {
+        doc.rect(x, y, cornerSize, cornerSize)
+           .fillColor('#3b82f6');
+      });
+
+      // Certificate title
+      doc.fontSize(42)
+         .font('Helvetica-Bold')
+         .fillColor('#1e293b')
+         .text('CERTIFICATE', 0, 120, { 
+           align: 'center',
+           width: width
+         });
+
+      doc.fontSize(36)
+         .font('Helvetica-Bold')
+         .fillColor('#3b82f6')
+         .text('OF COMPLETION', 0, 175, { 
+           align: 'center',
+           width: width
+         });
+
+      // Decorative line under title
+      const lineWidth = 300;
+      doc.lineWidth(2)
+         .strokeColor('#3b82f6')
+         .moveTo((width - lineWidth) / 2, 230)
+         .lineTo((width + lineWidth) / 2, 230)
+         .stroke();
+
+      // Award text
+      doc.fontSize(18)
+         .font('Helvetica')
+         .fillColor('#475569')
+         .text('This certificate is proudly presented to', 0, 260, { 
+           align: 'center',
+           width: width
+         });
+
+      // Student name
+      doc.fontSize(48)
+         .font('Helvetica-Bold')
+         .fillColor('#1e293b')
+         .text(enrollment.user.name, 0, 310, { 
+           align: 'center',
+           width: width
+         });
+
+      // Course text
+      doc.fontSize(16)
+         .font('Helvetica')
+         .fillColor('#475569')
+         .text('for successfully completing the course', 0, 395, { 
+           align: 'center',
+           width: width
+         });
+
+      // Course name
+      doc.fontSize(28)
+         .font('Helvetica-Bold')
+         .fillColor('#1e293b')
+         .text(enrollment.course.title, 0, 435, { 
+           align: 'center',
+           width: width
+         });
+
+      // Instructor info
+      doc.fontSize(14)
+         .font('Helvetica')
+         .fillColor('#64748b')
+         .text(`Instructed by: ${enrollment.course.instructor}`, 0, 495, { 
+           align: 'center',
+           width: width
+         });
+
+      // Date
+      const issueDate = new Date().toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+      
+      doc.fontSize(12)
+         .font('Helvetica')
+         .fillColor('#94a3b8')
+         .text(`Issued on: ${issueDate}`, 0, 530, { 
+           align: 'center',
+           width: width
+         });
+
+      // Certificate ID (small, at bottom)
+      const certId = `CERT-${Date.now().toString(36).toUpperCase()}`;
+      doc.fontSize(8)
+         .font('Helvetica')
+         .fillColor('#94a3b8')
+         .text(`Certificate ID: ${certId}`, 0, height - 65, { 
+           align: 'center',
+           width: width
+         });
+
+      // Footer text
+      doc.fontSize(8)
+         .font('Helvetica')
+         .fillColor('#cbd5e1')
+         .text('© LearnHub - All Rights Reserved', 0, height - 50, { 
+           align: 'center',
+           width: width
+         });
+
+      // Decorative seal/medal (using shapes)
+      const sealX = width - 140;
+      const sealY = 110;
+      const sealSize = 60;
+
+      // Outer circle
+      doc.circle(sealX, sealY, sealSize)
+         .strokeColor('#f59e0b')
+         .lineWidth(2)
+         .stroke();
+
+      // Inner circle
+      doc.circle(sealX, sealY, sealSize - 8)
+         .strokeColor('#f59e0b')
+         .lineWidth(1)
+         .stroke();
+
+      // Star in seal
+      doc.fontSize(30)
+         .font('Helvetica-Bold')
+         .fillColor('#f59e0b')
+         .text('★', sealX - 15, sealY - 20, { 
+           width: 30,
+           align: 'center'
+         });
+
+      // Small decorative elements
+      const iconSize = 12;
+      const iconY = 280;
+      const iconPositions = [width / 2 - 80, width / 2 + 60];
+      
+      iconPositions.forEach(x => {
+        doc.circle(x, iconY, iconSize)
+           .fillColor('#3b82f6')
+           .opacity(0.3);
+      });
+
+      // Finish
+      doc.end();
+
+      writeStream.on('finish', () => {
+        resolve();
+      });
+
+      writeStream.on('error', (error) => {
+        reject(error);
+      });
+
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
 
 // ===== WISHLIST =====
