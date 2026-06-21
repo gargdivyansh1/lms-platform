@@ -4,7 +4,7 @@ const { body, query, param } = require('express-validator');
 const instructorController = require('../controllers/instructor.controller');
 const { auth, isInstructor } = require('../middleware/auth');
 const { validateRequest } = require('../middleware/validate');
-const upload = require('../middleware/upload');
+const upload = require('../middleware/upload'); // Add this line
 
 // All instructor routes require authentication and instructor role
 router.use(auth, isInstructor);

@@ -533,8 +533,24 @@ exports.getStudentProgress = async (req, res) => {
       where: { id: instructorId }
     });
 
+    // Get student details
+    const student = await prisma.user.findUnique({
+      where: { id: studentId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatar: true,
+        createdAt: true
+      }
+    });
+
+    if (!student) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
     // Get all courses by this instructor
-    const courses = await prisma.course.findMany({
+    const instructorCourses = await prisma.course.findMany({
       where: {
         instructor: instructor.name,
         isDeleted: false
@@ -545,37 +561,33 @@ exports.getStudentProgress = async (req, res) => {
       }
     });
 
+    const courseIds = instructorCourses.map(c => c.id);
+
     // Get student's progress in these courses
     const progress = await prisma.userCourse.findMany({
       where: {
         userId: studentId,
         courseId: {
-          in: courses.map(c => c.id)
+          in: courseIds
         }
       },
       include: {
         course: {
           select: {
-            title: true
+            id: true,
+            title: true,
+            instructor: true
           }
         }
       }
     });
 
-    // Get student details
-    const student = await prisma.user.findUnique({
-      where: { id: studentId },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        avatar: true
-      }
-    });
-
     res.json({
       student,
-      courses: progress
+      courses: progress.map(p => ({
+        ...p,
+        title: p.course.title
+      }))
     });
   } catch (error) {
     console.error('Get student progress error:', error);
@@ -591,16 +603,31 @@ exports.getStudentAssignments = async (req, res) => {
       where: { id: instructorId }
     });
 
+    // Get all courses by this instructor
+    const instructorCourses = await prisma.course.findMany({
+      where: {
+        instructor: instructor.name,
+        isDeleted: false
+      },
+      select: {
+        id: true
+      }
+    });
+
+    const courseIds = instructorCourses.map(c => c.id);
+
+    // Get student's assignments in these courses
     const assignments = await prisma.assignment.findMany({
       where: {
         userId: studentId,
-        course: {
-          instructor: instructor.name
+        courseId: {
+          in: courseIds
         }
       },
       include: {
         course: {
           select: {
+            id: true,
             title: true
           }
         }
@@ -639,24 +666,13 @@ exports.createAssignment = async (req, res) => {
       return res.status(404).json({ error: 'Course not found' });
     }
 
-    const assignment = await prisma.assignment.create({
-      data: {
-        title,
-        description: description || '',
-        fileUrl: '',
-        fileSize: 0,
-        mimeType: '',
-        courseId,
-        userId: instructorId
-      }
-    });
-
-    // Notify all enrolled students
+    // Get all enrolled students
     const enrolled = await prisma.userCourse.findMany({
       where: { courseId },
       include: {
         user: {
           select: {
+            id: true,
             email: true,
             name: true
           }
@@ -664,7 +680,43 @@ exports.createAssignment = async (req, res) => {
       }
     });
 
+    if (enrolled.length === 0) {
+      return res.status(400).json({ error: 'No students enrolled in this course' });
+    }
+
+    // Create assignments for each enrolled student
+    const assignments = [];
     for (const enrollment of enrolled) {
+      const assignment = await prisma.assignment.create({
+        data: {
+          title,
+          description: description || '',
+          fileUrl: null,
+          fileSize: 0,
+          mimeType: '',
+          courseId,
+          userId: enrollment.user.id
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          },
+          course: {
+            select: {
+              id: true,
+              title: true,
+              instructor: true
+            }
+          }
+        }
+      });
+      assignments.push(assignment);
+
+      // Send email notification to each student
       await sendEmail({
         to: enrollment.user.email,
         subject: `New Assignment: ${title}`,
@@ -679,8 +731,9 @@ exports.createAssignment = async (req, res) => {
     }
 
     res.status(201).json({
-      message: 'Assignment created successfully',
-      assignment
+      message: `Assignment created successfully for ${assignments.length} students`,
+      assignments,
+      count: assignments.length
     });
   } catch (error) {
     console.error('Create assignment error:', error);
