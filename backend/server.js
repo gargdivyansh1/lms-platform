@@ -9,7 +9,6 @@ const path = require('path');
 
 // Import clients
 const prisma = require('./lib/prisma');
-const redis = require('./lib/redis');
 
 // Load environment variables
 dotenv.config();
@@ -99,8 +98,7 @@ app.listen(PORT, () => {
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, closing server...');
   await prisma.$disconnect();
-  await redis.quit();
   process.exit(0);
 });
 
-module.exports = { app, prisma, redis };
+module.exports = { app, prisma};
