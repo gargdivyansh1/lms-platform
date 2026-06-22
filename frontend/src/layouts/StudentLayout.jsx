@@ -141,11 +141,7 @@ const StudentLayout = () => {
             <div className="flex items-center space-x-3">
               <div className="relative">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-sm shadow-md">
-                  {user?.avatar ? (
-                    <img src={`${import.meta.env.VITE_API_URL}${user.avatar}`} alt={user.name} className="w-full h-full rounded-full object-cover" />
-                  ) : (
-                    user?.name?.[0]?.toUpperCase() || 'S'
-                  )}
+                  {user?.name?.[0]?.toUpperCase() || 'S'}
                 </div>
                 <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800"></div>
               </div>
@@ -168,11 +164,7 @@ const StudentLayout = () => {
           ) : (
             <div className="relative">
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-sm shadow-md">
-                {user?.avatar ? (
-                  <img src={`${import.meta.env.VITE_API_URL}${user.avatar}`} alt={user.name} className="w-full h-full rounded-full object-cover" />
-                ) : (
-                  user?.name?.[0]?.toUpperCase() || 'S'
-                )}
+                {user?.name?.[0]?.toUpperCase() || 'S'}
               </div>
               <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white dark:border-slate-800"></div>
               <button

@@ -15,7 +15,8 @@ import {
   ClipboardDocumentListIcon,
   HomeIcon,
   CogIcon,
-  ShieldCheckIcon, 
+  ShieldCheckIcon,
+  UserIcon, 
 } from '@heroicons/react/24/outline';
 
 const Footer = () => {
@@ -74,9 +75,9 @@ const Footer = () => {
   const quickLinks = getQuickLinks();
 
   const socialLinks = [
-    { name: 'GitHub', href: '#' },
+    { name: 'GitHub', href: 'https://github.com/gargdivyansh1/lms-platform' },
     { name: 'Twitter', href: '#' },
-    { name: 'LinkedIn', href: '#' },
+    { name: 'LinkedIn', href: 'https://www.linkedin.com/in/divyansh-garg515/' },
     { name: 'YouTube', href: '#' }
   ];
 
@@ -105,7 +106,7 @@ const Footer = () => {
             </p>
             {isAuthenticated && (
               <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-                <SparklesIcon className="h-4 w-4 text-blue-500" />
+                <UserIcon className="h-4 w-4 text-blue-500" />
                 <span>Welcome back, {user?.name?.split(' ')[0] || 'Learner'}!</span>
               </div>
             )}
@@ -141,15 +142,15 @@ const Footer = () => {
             <ul className="space-y-2.5 text-sm text-slate-600 dark:text-slate-400">
               <li className="flex items-start gap-2">
                 <EnvelopeIcon className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                <span>support@learnhub.com</span>
+                <span>lmsplatform515@gmail.com</span>
               </li>
               <li className="flex items-start gap-2">
                 <PhoneIcon className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                <span>+1 (555) 123-4567</span>
+                <span>+91-7617449174</span>
               </li>
               <li className="flex items-start gap-2">
                 <MapPinIcon className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
-                <span>123 Learning St, Education City, EC 12345</span>
+                <span>Mathura, UP</span>
               </li>
             </ul>
           </div>

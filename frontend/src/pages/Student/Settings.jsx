@@ -124,17 +124,7 @@ const Settings = () => {
                     <div className="flex items-center gap-6 mb-4">
                         <div className="relative group">
                             <div className="w-24 h-24 rounded-full bg-blue-600 flex items-center justify-center text-white text-3xl font-bold overflow-hidden shadow-md">
-                                {avatarPreview ? (
-                                    <img src={avatarPreview} alt="Avatar preview" className="w-full h-full object-cover" />
-                                ) : user?.avatar ? (
-                                    <img
-                                        src={`${import.meta.env.VITE_API_URL}${user.avatar}`}
-                                        alt={user.name}
-                                        className="w-full h-full object-cover"
-                                    />
-                                ) : (
-                                    user?.name?.[0]?.toUpperCase() || 'S'
-                                )}
+                                {user?.name?.[0]?.toUpperCase() || 'S'}
                             </div>
                             <label className="absolute bottom-0 right-0 p-2 bg-blue-600 rounded-full cursor-pointer hover:bg-blue-700 transition-all shadow-md group-hover:scale-110">
                                 <CameraIcon className="h-4 w-4 text-white" />
@@ -213,44 +203,44 @@ const Settings = () => {
                 </>
             )
         },
-        {
-            title: 'Preferences',
-            icon: GlobeAltIcon,
-            fields: (
-                <>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                            Language
-                        </label>
-                        <select
-                            value={formData.language}
-                            onChange={(e) => setFormData({ ...formData, language: e.target.value })}
-                            className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
-                        >
-                            <option value="en">English</option>
-                            <option value="es">Spanish</option>
-                            <option value="fr">French</option>
-                            <option value="de">German</option>
-                            <option value="hi">Hindi</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                            Theme
-                        </label>
-                        <select
-                            value={formData.theme}
-                            onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
-                            className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
-                        >
-                            <option value="system">System Default</option>
-                            <option value="light">Light</option>
-                            <option value="dark">Dark</option>
-                        </select>
-                    </div>
-                </>
-            )
-        },
+        // {
+        //     title: 'Preferences',
+        //     icon: GlobeAltIcon,
+        //     fields: (
+        //         <>
+        //             <div>
+        //                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+        //                     Language
+        //                 </label>
+        //                 <select
+        //                     value={formData.language}
+        //                     onChange={(e) => setFormData({ ...formData, language: e.target.value })}
+        //                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+        //                 >
+        //                     <option value="en">English</option>
+        //                     <option value="es">Spanish</option>
+        //                     <option value="fr">French</option>
+        //                     <option value="de">German</option>
+        //                     <option value="hi">Hindi</option>
+        //                 </select>
+        //             </div>
+        //             <div>
+        //                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+        //                     Theme
+        //                 </label>
+        //                 <select
+        //                     value={formData.theme}
+        //                     onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
+        //                     className="w-full px-4 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-slate-700 dark:text-white"
+        //                 >
+        //                     <option value="system">System Default</option>
+        //                     <option value="light">Light</option>
+        //                     <option value="dark">Dark</option>
+        //                 </select>
+        //             </div>
+        //         </>
+        //     )
+        // },
         {
             title: 'Notifications',
             icon: BellIcon,

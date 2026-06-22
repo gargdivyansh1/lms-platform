@@ -230,7 +230,7 @@ const StudentDashboard = () => {
             </div>
           ) : (
             <div className="text-center py-8">
-              <div className="text-5xl mb-3">📚</div>
+              <div className="flex justify-center text-5xl mb-3"><BookOpenIcon  className='h-10 w-10'/></div>
               <p className="text-slate-500 dark:text-slate-400">No recent activity</p>
               <p className="text-sm text-slate-400 dark:text-slate-500">Start learning today</p>
             </div>

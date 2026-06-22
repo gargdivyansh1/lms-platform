@@ -44,51 +44,45 @@ const InstructorAssignments = () => {
   const { data: assignments, isLoading, refetch } = useQuery({
     queryKey: ['instructor-assignments', selectedCourse],
     queryFn: async () => {
-      if (selectedCourse === 'all') {
-        // Get all assignments from all courses
-        const allAssignments = [];
-        const courseData = await api.get('/instructor/courses');
-        
-        for (const course of courseData.data) {
-          // Get students for this course
-          const studentsResponse = await api.get(`/instructor/courses/${course.id}/students`);
-          const students = studentsResponse.data;
-          
-          for (const student of students) {
-            // Get assignments for each student
-            const assignmentResponse = await api.get(`/instructor/students/${student.user.id}/assignments`);
-            const studentAssignments = assignmentResponse.data.map(a => ({
-              ...a,
-              courseTitle: course.title,
-              courseId: course.id,
-              studentName: student.user.name,
-              studentEmail: student.user.email,
-              studentAvatar: student.user.avatar
-            }));
-            allAssignments.push(...studentAssignments);
-          }
+      const allAssignments = [];
+      
+      // If "All Courses" is selected, get all courses
+      const courseList = selectedCourse === 'all' 
+        ? await api.get('/instructor/courses')
+        : { data: [{ id: selectedCourse }] };
+
+      const courseData = selectedCourse === 'all' 
+        ? courseList.data 
+        : [{ id: selectedCourse, title: courses?.find(c => c.id === selectedCourse)?.title || 'Unknown Course' }];
+
+      for (const course of courseData) {
+        // Get course details to get the title
+        let courseTitle = course.title;
+        if (!courseTitle && selectedCourse !== 'all') {
+          const courseDetail = await api.get(`/instructor/courses/${selectedCourse}`);
+          courseTitle = courseDetail.data.title;
         }
-        return allAssignments;
-      } else {
-        // Get assignments for specific course
-        const studentsResponse = await api.get(`/instructor/courses/${selectedCourse}/students`);
+
+        // Get students for this course
+        const studentsResponse = await api.get(`/instructor/courses/${course.id}/students`);
         const students = studentsResponse.data;
-        const allAssignments = [];
         
         for (const student of students) {
+          // Get assignments for each student
           const assignmentResponse = await api.get(`/instructor/students/${student.user.id}/assignments`);
           const studentAssignments = assignmentResponse.data.map(a => ({
             ...a,
-            courseTitle: student.course?.title || 'Unknown Course',
-            courseId: selectedCourse,
-            studentName: student.user.name,
-            studentEmail: student.user.email,
-            studentAvatar: student.user.avatar
+            courseTitle: courseTitle || course.title || 'Unknown Course',
+            courseId: course.id,
+            studentName: student.user.name || 'Unknown Student',
+            studentEmail: student.user.email || '',
+            studentAvatar: student.user.avatar || null
           }));
           allAssignments.push(...studentAssignments);
         }
-        return allAssignments;
       }
+      
+      return allAssignments;
     },
     enabled: !!courses,
     retry: 1
@@ -101,22 +95,18 @@ const InstructorAssignments = () => {
       return response.data;
     },
     onSuccess: (data) => {
-      // Invalidate queries to refresh the list
       queryClient.invalidateQueries(['instructor-assignments']);
       queryClient.invalidateQueries(['instructor-courses']);
       
-      // Show success message with count
       if (data.count) {
         toast.success(`Assignment created for ${data.count} students!`);
       } else {
         toast.success('Assignment created successfully!');
       }
       
-      // Reset form
       setShowCreateForm(false);
       setFormData({ title: '', description: '', dueDate: '', maxScore: 100 });
       
-      // Force refetch
       setTimeout(() => {
         refetch();
       }, 500);
@@ -149,7 +139,16 @@ const InstructorAssignments = () => {
       toast.error('Please select a specific course');
       return;
     }
-    createAssignmentMutation.mutate(formData);
+    
+    // Format the data
+    const submitData = {
+      title: formData.title,
+      description: formData.description,
+      dueDate: formData.dueDate || null,
+      maxScore: parseInt(formData.maxScore) || 100
+    };
+    
+    createAssignmentMutation.mutate(submitData);
   };
 
   const handleGrade = (assignmentId, grade, feedback) => {
@@ -199,7 +198,6 @@ const InstructorAssignments = () => {
 
   return (
     <div className="space-y-6">
-
       {/* Statistics */}
       {assignments?.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -407,7 +405,7 @@ const InstructorAssignments = () => {
                           {assignment.title}
                         </h3>
                         <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500 dark:text-slate-400">
-                          <span>{assignment.courseTitle}</span>
+                          <span>{assignment.courseTitle || 'Unknown Course'}</span>
                           <span className="w-1 h-1 bg-slate-300 rounded-full"></span>
                           <span className="flex items-center gap-1">
                             <UserIcon className="h-3 w-3" />

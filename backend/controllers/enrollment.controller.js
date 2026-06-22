@@ -8,7 +8,12 @@ exports.enrollCourse = async (req, res) => {
 
     // Check if course exists
     const course = await prisma.course.findUnique({
-      where: { id: courseId, isDeleted: false }
+      where: { id: courseId, isDeleted: false },
+      include: {
+        modules: {
+          orderBy: { order: 'asc' }
+        }
+      }
     });
 
     if (!course) {
@@ -33,17 +38,40 @@ exports.enrollCourse = async (req, res) => {
     const enrollment = await prisma.userCourse.create({
       data: {
         userId: userId,
-        courseId: courseId
+        courseId: courseId,
+        progress: 0,
+        completed: false
       },
       include: {
         course: {
           select: {
             title: true,
-            instructor: true
+            instructor: true,
+            modules: {
+              orderBy: { order: 'asc' }
+            }
           }
         }
       }
     });
+
+    // Create module progress entries for each module in the course
+    if (course.modules && course.modules.length > 0) {
+      const moduleProgressData = course.modules.map(module => ({
+        userId: userId,
+        courseId: courseId,
+        moduleId: module.id,
+        enrollmentId: enrollment.id,
+        completed: false,
+        startedAt: new Date()
+      }));
+
+      await prisma.moduleProgress.createMany({
+        data: moduleProgressData
+      });
+
+      console.log(`✅ Created ${moduleProgressData.length} module progress entries for user ${userId} in course ${courseId}`);
+    }
 
     // Get user info for email
     const user = await prisma.user.findUnique({
@@ -65,7 +93,8 @@ exports.enrollCourse = async (req, res) => {
 
     res.status(201).json({
       message: 'Successfully enrolled in course',
-      enrollment
+      enrollment,
+      totalModules: course.modules.length
     });
   } catch (error) {
     console.error('Enrollment error:', error);

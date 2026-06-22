@@ -14,14 +14,15 @@ model User {
   name            String
   role            Role           @default(STUDENT)
   avatar          String?
-  bio             String?        // Add bio field
+  bio             String?
   isDeleted       Boolean        @default(false)
   enrolledCourses UserCourse[]
   assignments     Assignment[]
-  certificates    Certificate[]  // Add this relation
-  wishlist        Wishlist[]     // Add this relation
-  reviews         Review[]       // Add this relation
+  certificates    Certificate[]
+  wishlist        Wishlist[]
+  reviews         Review[]
   notifications   Notification[]
+  moduleProgress  ModuleProgress[] 
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -30,22 +31,23 @@ model User {
 }
 
 model Course {
-  id          String         @id @default(uuid())
-  title       String
-  description String         @db.Text
-  instructor  String
-  thumbnail   String?
-  category    String?        // Add category field
-  featured    Boolean        @default(false)
-  isDeleted   Boolean        @default(false)
-  enrolled    UserCourse[]
-  modules     Module[]
-  assignments Assignment[]
-  certificates Certificate[]  // Add this relation
-  wishlist    Wishlist[]     // Add this relation
-  reviews     Review[]       // Add this relation
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  id              String         @id @default(uuid())
+  title           String
+  description     String         @db.Text
+  instructor      String
+  thumbnail       String?
+  category        String?
+  featured        Boolean        @default(false)
+  isDeleted       Boolean        @default(false)
+  enrolled        UserCourse[]
+  modules         Module[]
+  assignments     Assignment[]
+  certificates    Certificate[]
+  wishlist        Wishlist[]
+  reviews         Review[]
+  moduleProgress  ModuleProgress[] // New: Track module progress
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@index([isDeleted])
   @@index([instructor])
@@ -54,14 +56,15 @@ model Course {
 }
 
 model UserCourse {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  courseId    String
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  progress    Int      @default(0)
-  completed   Boolean  @default(false)
-  enrolledAt  DateTime @default(now())
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId        String
+  course          Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress        Int            @default(0)
+  completed       Boolean        @default(false)
+  enrolledAt      DateTime       @default(now())
+  moduleProgress  ModuleProgress[] // New: Track module progress for this enrollment
 
   @@unique([userId, courseId])
   @@index([userId])
@@ -69,18 +72,42 @@ model UserCourse {
 }
 
 model Module {
-  id          String   @id @default(uuid())
-  title       String
-  content     String   @db.Text
-  videoUrl    String?
-  courseId    String
-  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  order       Int
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String         @id @default(uuid())
+  title           String
+  content         String         @db.Text
+  videoUrl        String?
+  courseId        String
+  course          Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  order           Int
+  moduleProgress  ModuleProgress[] // New: Track module progress
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@index([courseId])
   @@index([order])
+}
+
+model ModuleProgress {
+  id              String         @id @default(uuid())
+  userId          String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId        String
+  course          Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  moduleId        String
+  module          Module         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  enrollmentId    String         @map("enrollmentId")
+  enrollment      UserCourse     @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  completed       Boolean        @default(false)
+  completedAt     DateTime?
+  startedAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@unique([userId, courseId, moduleId]) 
+  @@index([userId])
+  @@index([courseId])
+  @@index([moduleId])
+  @@index([enrollmentId])
+  @@index([completed])
 }
 
 model Assignment {
@@ -96,12 +123,11 @@ model Assignment {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   grade       Float?
   feedback    String?
-  submittedAt DateTime? // Make this optional (nullable)
+  submittedAt DateTime?
   updatedAt   DateTime @updatedAt
 
   @@index([courseId])
   @@index([userId])
-  @@index([submittedAt])
 }
 
 model Certificate {
@@ -151,7 +177,7 @@ model Notification {
   userId    String
   title     String
   message   String
-  type      String   // 'enrollment', 'grade', 'assignment', 'announcement', 'system'
+  type      String
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
 

@@ -200,9 +200,6 @@ exports.getCourseProgress = async (req, res) => {
           include: {
             modules: {
               orderBy: { order: 'asc' }
-            },
-            assignments: {
-              where: { userId: userId }
             }
           }
         }
@@ -213,19 +210,39 @@ exports.getCourseProgress = async (req, res) => {
       return res.status(403).json({ error: 'You are not enrolled in this course' });
     }
 
-    // Calculate module completion - using progress as proxy
-    const totalModules = enrollment.course.modules.length;
-    const completedModules = Math.round((enrollment.progress / 100) * totalModules);
+    // Get module progress for this user and course
+    const moduleProgress = await prisma.moduleProgress.findMany({
+      where: {
+        userId: userId,
+        courseId: courseId
+      }
+    });
 
-    // Get assignments
-    const assignments = enrollment.course.assignments.map(a => ({
-      id: a.id,
-      title: a.title,
-      description: a.description,
-      grade: a.grade,
-      feedback: a.feedback,
-      submittedAt: a.submittedAt
+    // Create a map of moduleId -> progress status
+    const progressMap = {};
+    moduleProgress.forEach(p => {
+      progressMap[p.moduleId] = {
+        completed: p.completed,
+        completedAt: p.completedAt,
+        startedAt: p.startedAt
+      };
+    });
+
+    // Merge module data with progress status
+    const modulesWithProgress = enrollment.course.modules.map(module => ({
+      ...module,
+      progress: progressMap[module.id] || {
+        completed: false,
+        completedAt: null,
+        startedAt: new Date()
+      },
+      isCompleted: progressMap[module.id]?.completed || false
     }));
+
+    // Calculate statistics
+    const totalModules = modulesWithProgress.length;
+    const completedModules = modulesWithProgress.filter(m => m.isCompleted).length;
+    const overallProgress = totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0;
 
     res.json({
       course: {
@@ -234,18 +251,36 @@ exports.getCourseProgress = async (req, res) => {
         instructor: enrollment.course.instructor,
         description: enrollment.course.description
       },
+      enrollment: {
+        progress: enrollment.progress,
+        completed: enrollment.completed,
+        enrolledAt: enrollment.enrolledAt
+      },
       progress: {
-        overall: enrollment.progress,
+        overall: overallProgress,
         completed: enrollment.completed,
         modulesCompleted: completedModules,
         totalModules: totalModules,
-        percentage: totalModules > 0 ? Math.round((completedModules / totalModules) * 100) : 0
+        percentage: overallProgress
       },
-      modules: enrollment.course.modules,
-      assignments
+      modules: modulesWithProgress,
+      assignments: await prisma.assignment.findMany({
+        where: {
+          userId: userId,
+          courseId: courseId
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          grade: true,
+          feedback: true,
+          submittedAt: true
+        }
+      })
     });
   } catch (error) {
-    console.error('Course progress error:', error);
+    console.error('Get course progress error:', error);
     res.status(500).json({ error: 'Failed to fetch course progress' });
   }
 };
@@ -263,13 +298,6 @@ exports.completeModule = async (req, res) => {
           userId: userId,
           courseId: courseId
         }
-      },
-      include: {
-        course: {
-          include: {
-            modules: true
-          }
-        }
       }
     });
 
@@ -277,13 +305,73 @@ exports.completeModule = async (req, res) => {
       return res.status(403).json({ error: 'You are not enrolled in this course' });
     }
 
-    // Update progress - increment by 10% per module (simplified)
-    const totalModules = enrollment.course.modules.length;
-    const currentProgress = enrollment.progress;
-    const progressIncrement = Math.round(100 / totalModules);
-    const newProgress = Math.min(currentProgress + progressIncrement, 100);
+    // Check if module exists in the course
+    const moduleExists = await prisma.module.findFirst({
+      where: {
+        id: moduleId,
+        courseId: courseId
+      }
+    });
+
+    if (!moduleExists) {
+      return res.status(404).json({ error: 'Module not found in this course' });
+    }
+
+    // Check if module is already completed
+    const existingProgress = await prisma.moduleProgress.findUnique({
+      where: {
+        userId_courseId_moduleId: {
+          userId: userId,
+          courseId: courseId,
+          moduleId: moduleId
+        }
+      }
+    });
+
+    if (existingProgress && existingProgress.completed) {
+      return res.status(400).json({ error: 'Module already completed' });
+    }
+
+    // Update or create module progress
+    const moduleProgress = await prisma.moduleProgress.upsert({
+      where: {
+        userId_courseId_moduleId: {
+          userId: userId,
+          courseId: courseId,
+          moduleId: moduleId
+        }
+      },
+      update: {
+        completed: true,
+        completedAt: new Date()
+      },
+      create: {
+        userId: userId,
+        courseId: courseId,
+        moduleId: moduleId,
+        enrollmentId: enrollment.id,
+        completed: true,
+        completedAt: new Date()
+      }
+    });
+
+    // Calculate overall course progress
+    const totalModules = await prisma.module.count({
+      where: { courseId: courseId }
+    });
+
+    const completedModules = await prisma.moduleProgress.count({
+      where: {
+        userId: userId,
+        courseId: courseId,
+        completed: true
+      }
+    });
+
+    const newProgress = Math.round((completedModules / totalModules) * 100);
     const isCompleted = newProgress === 100;
 
+    // Update course progress
     await prisma.userCourse.update({
       where: {
         userId_courseId: {
@@ -304,8 +392,11 @@ exports.completeModule = async (req, res) => {
 
     res.json({
       message: 'Module completed successfully',
+      moduleProgress,
       progress: newProgress,
-      completed: isCompleted
+      completed: isCompleted,
+      modulesCompleted: completedModules,
+      totalModules: totalModules
     });
   } catch (error) {
     console.error('Complete module error:', error);

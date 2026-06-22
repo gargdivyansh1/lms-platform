@@ -172,15 +172,7 @@ const AssignmentSubmit = () => {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      <button
-        onClick={() => navigate('/student/assignments')}
-        className="inline-flex items-center text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors group mb-6"
-      >
-        <ArrowLeftIcon className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-        Back to Assignments
-      </button>
-
+    <div className="mx-auto">
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
         {/* Assignment Info */}
         <div className="mb-6 pb-6 border-b border-slate-200 dark:border-slate-700">

@@ -24,6 +24,10 @@ const limiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.'
 });
 
+app.head("/", (req, res) => {
+    res.status(200).end();
+});
+
 // Middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }

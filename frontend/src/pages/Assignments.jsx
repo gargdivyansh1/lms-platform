@@ -6,7 +6,8 @@ import {
   DocumentIcon, 
   CheckCircleIcon,
   XCircleIcon,
-  ClockIcon
+  ClockIcon,
+  BookmarkIcon
 } from '@heroicons/react/24/outline';
 
 const Assignments = () => {
@@ -29,7 +30,7 @@ const Assignments = () => {
   if (!assignments || assignments.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="text-6xl mb-4">📝</div>
+        <div className="flex justify-center text-6xl mb-4"><BookmarkIcon className='h-10 w-10'/></div>
         <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
           No Assignments Yet
         </h2>

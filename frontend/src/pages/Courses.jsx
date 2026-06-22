@@ -13,7 +13,8 @@ import {
   AcademicCapIcon,
   SparklesIcon,
   ChevronLeftIcon,
-  ChevronRightIcon
+  ChevronRightIcon,
+  UserIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 
@@ -90,7 +91,7 @@ const Courses = () => {
             to="/student/courses"
             className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all flex items-center gap-2 shadow-sm hover:shadow-md"
           >
-            <AcademicCapIcon className="h-5 w-5" />
+            <UserIcon className="h-5 w-5" />
             My Learning
           </Link>
         )}
@@ -109,7 +110,7 @@ const Courses = () => {
           <MagnifyingGlassIcon className="h-5 w-5 text-slate-400 absolute left-3.5 top-3" />
         </form>
 
-        <select
+        {/* <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value)}
           className="px-4 py-2.5 border border-slate-300 dark:border-slate-600 rounded-xl dark:bg-slate-700 dark:text-white"
@@ -117,12 +118,12 @@ const Courses = () => {
           <option value="newest">Newest First</option>
           <option value="popular">Most Popular</option>
           <option value="rating">Highest Rated</option>
-        </select>
+        </select> */}
       </div>
 
       {data?.data?.length === 0 ? (
         <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700">
-          <div className="text-7xl mb-4">🔍</div>
+          <div className="flex justify-center text-7xl mb-4"><MagnifyingGlassIcon className='h-10 w-10' /></div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">
             {search ? 'No matching courses found' : 'No Courses Available'}
           </h2>
