@@ -1,5 +1,4 @@
 const prisma = require('../lib/prisma');
-const redis = require('../lib/redis');
 
 exports.getCourses = async (req, res) => {
   try {
@@ -8,15 +7,6 @@ exports.getCourses = async (req, res) => {
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
     const instructor = req.query.instructor || '';
-
-    // Build cache key
-    const cacheKey = `courses:${page}:${limit}:${search}:${instructor}`;
-    
-    // Check cache
-    const cachedData = await redis.get(cacheKey);
-    if (cachedData) {
-      return res.json(JSON.parse(cachedData));
-    }
 
     // Build where clause
     const where = {
@@ -27,10 +17,11 @@ exports.getCourses = async (req, res) => {
           { description: { contains: search, mode: 'insensitive' } }
         ]
       }),
-      ...(instructor && { instructor: { contains: instructor, mode: 'insensitive' } })
+      ...(instructor && {
+        instructor: { contains: instructor, mode: 'insensitive' }
+      })
     };
 
-    // Get courses with count
     const [courses, total] = await Promise.all([
       prisma.course.findMany({
         where,
@@ -54,7 +45,7 @@ exports.getCourses = async (req, res) => {
       prisma.course.count({ where })
     ]);
 
-    const response = {
+    res.json({
       data: courses,
       pagination: {
         page,
@@ -62,12 +53,8 @@ exports.getCourses = async (req, res) => {
         total,
         pages: Math.ceil(total / limit)
       }
-    };
+    });
 
-    // Cache for 5 minutes
-    await redis.setex(cacheKey, 300, JSON.stringify(response));
-
-    res.json(response);
   } catch (error) {
     console.error('Get courses error:', error);
     res.status(500).json({ error: 'Failed to fetch courses' });
@@ -78,8 +65,11 @@ exports.getCourseById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const course = await prisma.course.findUnique({
-      where: { id, isDeleted: false },
+    const course = await prisma.course.findFirst({
+      where: {
+        id,
+        isDeleted: false
+      },
       include: {
         modules: {
           orderBy: { order: 'asc' }
@@ -103,6 +93,7 @@ exports.getCourseById = async (req, res) => {
     }
 
     res.json(course);
+
   } catch (error) {
     console.error('Get course error:', error);
     res.status(500).json({ error: 'Failed to fetch course' });
@@ -125,13 +116,8 @@ exports.createCourse = async (req, res) => {
       }
     });
 
-    // Clear cache
-    const keys = await redis.keys('courses:*');
-    if (keys.length > 0) {
-      await redis.del(keys);
-    }
-
     res.status(201).json(course);
+
   } catch (error) {
     console.error('Create course error:', error);
     res.status(500).json({ error: 'Failed to create course' });
@@ -143,7 +129,6 @@ exports.updateCourse = async (req, res) => {
     const { id } = req.params;
     const { title, description, instructor, thumbnail } = req.body;
 
-    // Check if course exists
     const existing = await prisma.course.findUnique({
       where: { id }
     });
@@ -162,13 +147,8 @@ exports.updateCourse = async (req, res) => {
       }
     });
 
-    // Clear cache
-    const keys = await redis.keys('courses:*');
-    if (keys.length > 0) {
-      await redis.del(keys);
-    }
-
     res.json(course);
+
   } catch (error) {
     console.error('Update course error:', error);
     res.status(500).json({ error: 'Failed to update course' });
@@ -179,19 +159,18 @@ exports.deleteCourse = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Soft delete
     const course = await prisma.course.update({
       where: { id },
-      data: { isDeleted: true }
+      data: {
+        isDeleted: true
+      }
     });
 
-    // Clear cache
-    const keys = await redis.keys('courses:*');
-    if (keys.length > 0) {
-      await redis.del(keys);
-    }
+    res.json({
+      message: 'Course deleted successfully',
+      course
+    });
 
-    res.json({ message: 'Course deleted successfully', course });
   } catch (error) {
     console.error('Delete course error:', error);
     res.status(500).json({ error: 'Failed to delete course' });
@@ -204,16 +183,16 @@ exports.recoverCourse = async (req, res) => {
 
     const course = await prisma.course.update({
       where: { id },
-      data: { isDeleted: false }
+      data: {
+        isDeleted: false
+      }
     });
 
-    // Clear cache
-    const keys = await redis.keys('courses:*');
-    if (keys.length > 0) {
-      await redis.del(keys);
-    }
+    res.json({
+      message: 'Course recovered successfully',
+      course
+    });
 
-    res.json({ message: 'Course recovered successfully', course });
   } catch (error) {
     console.error('Recover course error:', error);
     res.status(500).json({ error: 'Failed to recover course' });
