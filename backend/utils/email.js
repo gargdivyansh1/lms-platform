@@ -9,7 +9,12 @@ const createTransporter = () => {
   }
 
   return nodemailer.createTransport({
-    service: 'gmail',
+    // Use explicit host/port instead of `service: 'gmail'`.
+    // Port 465 (implicit TLS) is blocked on many PaaS providers (Render, Railway, etc.).
+    // Port 587 (STARTTLS) is more commonly allowed for outbound SMTP.
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false, // false for port 587 (STARTTLS), true for port 465
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
@@ -19,8 +24,8 @@ const createTransporter = () => {
     maxConnections: 5,
     maxMessages: 100,
     rateLimit: true,
-    rateDelta: 1000, // 1 second between messages
-    rateLimit: 5, // 5 messages per second
+    rateDelta: 1000, // 1 second window
+    maxRate: 5, // max 5 messages per rateDelta window
     // Timeout settings
     connectionTimeout: 15000, // 15 seconds
     greetingTimeout: 15000,
@@ -31,7 +36,8 @@ const createTransporter = () => {
       minVersion: 'TLSv1.2'
     },
     // Debug mode (set to true for debugging)
-    debug: process.env.NODE_ENV === 'development'
+    debug: process.env.NODE_ENV === 'development',
+    logger: process.env.NODE_ENV === 'development'
   });
 };
 
@@ -475,7 +481,7 @@ const emailTemplates = {
 // Send email with retry logic
 const sendEmailWithRetry = async (mailOptions, retries = 3) => {
   let lastError;
-  
+
   for (let i = 0; i < retries; i++) {
     try {
       if (!transporter) {
@@ -492,7 +498,7 @@ const sendEmailWithRetry = async (mailOptions, retries = 3) => {
       }
     }
   }
-  
+
   throw lastError;
 };
 
@@ -513,7 +519,7 @@ exports.sendEmail = async ({ to, subject, template, data }) => {
 
     const templateFn = emailTemplates[template];
     let emailContent;
-    
+
     if (!templateFn) {
       console.warn(`⚠️ Email template "${template}" not found, using default`);
       emailContent = {
