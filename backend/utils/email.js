@@ -15,6 +15,7 @@ const createTransporter = () => {
     host: 'smtp.gmail.com',
     port: 587,
     secure: false, // false for port 587 (STARTTLS), true for port 465
+    family: 4, // force IPv4 — avoids ENETUNREACH when outbound IPv6 has no route (common on Render)
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
