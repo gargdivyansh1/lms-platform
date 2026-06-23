@@ -1,5 +1,5 @@
 // frontend/src/pages/Home.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -16,12 +16,61 @@ import {
   UsersIcon,
   GlobeAltIcon,
   ClockIcon,
-  StarIcon
+  StarIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 
+// Import images
+import firstImage from '../assets/first.png';
+import secondImage from '../assets/second.png';
+import thirdImage from '../assets/third.png';
+
 const Home = () => {
   const { isAuthenticated, isInstructor, isAdmin, user } = useAuth();
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const slides = [
+    {
+      image: firstImage,
+      title: 'Learn from the Best',
+      description: 'Access expert-led courses taught by industry professionals.',
+      alt: 'Expert instructors teaching'
+    },
+    {
+      image: secondImage,
+      title: 'Interactive Learning',
+      description: 'Engage with hands-on projects and real-world applications.',
+      alt: 'Interactive learning experience'
+    },
+    {
+      image: thirdImage,
+      title: 'Achieve Your Goals',
+      description: 'Earn certificates and advance your career with confidence.',
+      alt: 'Students achieving goals'
+    }
+  ];
+
+  // Auto-slide functionality
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const goToSlide = (index) => {
+    setCurrentSlide(index);
+  };
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  };
 
   const features = [
     {
@@ -114,7 +163,7 @@ const Home = () => {
         <div className="max-w-6xl mx-auto px-4 py-20 md:py-28 relative">
           <div className="text-center">
             <div className="inline-flex items-center px-4 py-2 bg-blue-100 dark:bg-blue-900/30 rounded-full text-sm font-medium text-blue-700 dark:text-blue-300 mb-6">
-              <StarIcon className="h-4 w-4 mr-2" />
+              <SparklesIcon className="h-4 w-4 mr-2" />
               Empowering Learners Worldwide
             </div>
             
@@ -183,6 +232,82 @@ const Home = () => {
                 <GlobeAltIcon className="h-5 w-5 text-purple-500" />
                 Available in 50+ countries
               </span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Image Carousel / Showcase Section */}
+      <section className="max-w-6xl mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">
+            Learning Experience
+          </h2>
+          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+            See what makes our platform the best choice for your learning journey.
+          </p>
+        </div>
+
+        <div className="relative">
+          {/* Carousel Container */}
+          <div className="relative overflow-hidden rounded-2xl shadow-xl">
+            <div 
+              className="flex transition-transform duration-500 ease-out"
+              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+            >
+              {slides.map((slide, index) => (
+                <div key={index} className="w-full flex-shrink-0">
+                  <div className="relative h-[400px] md:h-[500px] w-full">
+                    <img
+                      src={slide.image}
+                      alt={slide.alt}
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Overlay with text */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent"></div>
+                    <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 text-white">
+                      <h3 className="text-2xl md:text-3xl font-bold mb-2">
+                        {slide.title}
+                      </h3>
+                      <p className="text-base md:text-lg text-white/90 max-w-2xl">
+                        {slide.description}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Navigation Buttons */}
+            <button
+              onClick={prevSlide}
+              className="absolute left-4 top-1/2 -translate-y-1/2 p-2 bg-white/20 backdrop-blur-sm text-white rounded-full hover:bg-white/30 transition-all duration-200"
+              aria-label="Previous slide"
+            >
+              <ChevronLeftIcon className="h-6 w-6" />
+            </button>
+            <button
+              onClick={nextSlide}
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-2 bg-white/20 backdrop-blur-sm text-white rounded-full hover:bg-white/30 transition-all duration-200"
+              aria-label="Next slide"
+            >
+              <ChevronRightIcon className="h-6 w-6" />
+            </button>
+
+            {/* Dot Indicators */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+              {slides.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => goToSlide(index)}
+                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                    currentSlide === index
+                      ? 'bg-white w-8'
+                      : 'bg-white/50 hover:bg-white/70'
+                  }`}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ))}
             </div>
           </div>
         </div>
@@ -286,7 +411,7 @@ const Home = () => {
       {/* CTA Section */}
       {!isAuthenticated && (
         <section className="max-w-6xl mx-auto px-4">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-600 rounded-3xl p-12 text-center text-white">
+          <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl p-12 text-center text-white">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               Ready to Start Learning?
             </h2>
