@@ -202,12 +202,6 @@ Key models from `backend/prisma/schema.prisma`:
 - `Notification` — user notifications
 - `UserCourse` — course enrollment/progress
 
-### Seed data
-The backend ships with seeded users and sample courses, including:
-- admin user: `admin@lms.com` / `admin123`
-- instructors: `sarah@lms.com`, `michael@lms.com`, `emily@lms.com`
-- students: `alice@example.com`, `bob@example.com`, `carol@example.com`, `david@example.com`, `emma@example.com`
-
 ## Frontend Details
 
 ### Tech stack
